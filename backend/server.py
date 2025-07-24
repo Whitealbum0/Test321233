@@ -13,6 +13,7 @@ import httpx
 import json
 from enum import Enum
 import base64
+from image_utils import compress_image, validate_image_size
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -324,7 +325,17 @@ async def create_product(
     admin: User = Depends(get_current_admin)
 ):
     """Create new product (admin only)"""
-    product = Product(**product_data.dict(), created_by=admin.id)
+    images = []
+    for img in product_data.images:
+        if not validate_image_size(img):
+            raise HTTPException(status_code=400, detail="Image too large")
+        images.append(compress_image(img))
+
+    product = Product(
+        **product_data.dict(exclude={"images"}),
+        images=images,
+        created_by=admin.id,
+    )
     await db.products.insert_one(product.dict())
     return product
 
@@ -339,7 +350,15 @@ async def update_product(
     if not existing_product:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    update_data = {k: v for k, v in product_data.dict().items() if v is not None}
+    update_data = {k: v for k, v in product_data.dict(exclude={"images"}).items() if v is not None}
+    if product_data.images is not None:
+        images = []
+        for img in product_data.images:
+            if not validate_image_size(img):
+                raise HTTPException(status_code=400, detail="Image too large")
+            images.append(compress_image(img))
+        update_data["images"] = images
+
     update_data["updated_at"] = datetime.utcnow()
     
     await db.products.update_one(
