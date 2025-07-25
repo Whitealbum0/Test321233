@@ -70,6 +70,9 @@
 
 ### Публичные эндпоинты
 - `GET /api/products` - Получить товары с фильтрацией
+- `GET /api/php/products` - Получить товары из PHP сервера
+- `GET /api/php/products/{id}` - Получить товар из PHP по ID
+- `GET /api/php/categories` - Список категорий из PHP сервера
 - `GET /api/categories` - Получить все категории
 - `GET /api/categories/stats` - Статистика по категориям
 - `GET /api/products/{id}` - Получить товар по ID
@@ -122,6 +125,7 @@ npm start
 ```
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=ecommerce_db
+PHP_BACKEND_URL=http://localhost:8001
 ```
 
 **Frontend (.env):**

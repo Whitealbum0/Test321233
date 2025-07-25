@@ -23,6 +23,9 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Base URL of the PHP backend for integration
+php_backend_url = os.environ.get('PHP_BACKEND_URL', 'http://localhost:8001')
+
 # Create the main app without a prefix
 app = FastAPI()
 
@@ -461,6 +464,53 @@ async def get_all_users(admin: User = Depends(get_current_admin)):
     """Get all users (admin only)"""
     users = await db.users.find({}).to_list(1000)
     return [User(**user) for user in users]
+
+# ---------------------------------------------------------------------------
+# PHP backend integration
+# ---------------------------------------------------------------------------
+
+@api_router.get("/php/products")
+async def get_php_products():
+    """Retrieve products from the PHP backend"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{php_backend_url}/api/products")
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=502, detail="PHP backend error")
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="PHP backend unavailable")
+
+
+@api_router.get("/php/products/{product_id}")
+async def get_php_product(product_id: str):
+    """Retrieve a product by ID from the PHP backend"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{php_backend_url}/api/products/{product_id}")
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=502, detail="PHP backend error")
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="PHP backend unavailable")
+
+
+@api_router.get("/php/categories")
+async def get_php_categories():
+    """Retrieve categories from the PHP backend"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{php_backend_url}/api/categories")
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="PHP backend unavailable")
 
 # Health check
 @api_router.get("/health")
